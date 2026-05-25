@@ -30,6 +30,7 @@ import classroomsRoutes from './routes/classrooms.js';
 import classroomJoinRoutes from './routes/classroomJoin.js';
 import examManagementRoutes from './routes/examManagement.js';
 import analyticsRoutes from './routes/analytics.js';
+import scoreboardRoutes from './routes/scoreboard.js';
 import { verifyToken } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
 
@@ -66,6 +67,7 @@ app.use('/api/exams', examsRoutes);
 app.use('/api/exam-management', examManagementRoutes);
 app.use('/api/submissions', submissionsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/scoreboard', scoreboardRoutes);
 
 /**
  * Health Check Endpoint
