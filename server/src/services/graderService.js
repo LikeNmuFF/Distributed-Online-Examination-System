@@ -1,30 +1,3 @@
-/**
- * Grader Service - Parallel Answer Grading
- * 
- * Demonstrates: PARALLEL COMPUTING - Data Parallelism with Fork-Join Model
- * 
- * KEY FEATURE: This service grades all questions in parallel using worker_threads.
- * 
- * Traditional (sequential) approach:
- *   For each question:
- *     Check if answer matches key
- *     Total time = question1 + question2 + ... + questionN
- * 
- * Parallel approach (this implementation):
- *   Spawn N worker threads (one per question)
- *   All threads grade simultaneously
- *   Total time = max(question1, question2, ..., questionN)
- * 
- * For 10 questions on a 4-core system:
- *   Sequential: ~10ms (1ms per question)
- *   Parallel: ~3ms (all 10 spread across 4 cores)
- * 
- * This is the FORK-JOIN pattern:
- * - FORK: Create worker threads for each question
- * - PROCESS: All threads work in parallel
- * - JOIN: Collect all results and merge
- */
-
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -34,34 +7,106 @@ const __dirname = path.dirname(__filename);
 
 const GRADE_WORKER_PATH = path.join(__dirname, 'gradeWorker.js');
 
-/**
- * Grade all answers in parallel
- * 
- * Spawns one worker thread per question and waits for all to complete.
- * 
- * @param {Array} answers - Student's answers [A, B, C, ...]
- * @param {Array} answerKey - Correct answers [A, B, C, ...]
- * @returns {Promise<Object>} { score, total, breakdown }
- */
-export async function gradeParallel(answers, answerKey) {
+function normalizeAnswer(answer) {
+  if (typeof answer === 'string') return answer.trim();
+  if (typeof answer === 'number') return String(answer).trim();
+  if (typeof answer === 'boolean') return String(answer);
+  return answer;
+}
+
+function gradeMC(answer, correct) {
+  return normalizeAnswer(answer) === normalizeAnswer(correct);
+}
+
+function gradeIdentification(answer, correctArray) {
+  const normalized = normalizeAnswer(answer).toLowerCase();
+  return (correctArray || []).some(c => normalizeAnswer(c).toLowerCase() === normalized);
+}
+
+function gradeEnumeration(answer, correctArray) {
+  if (!answer || !correctArray) return 0;
+  const studentItems = (typeof answer === 'string' ? answer.split('\n') : answer)
+    .map(a => a.trim().toLowerCase())
+    .filter(a => a.length > 0);
+  const correctItems = correctArray.map(c => normalizeAnswer(c).toLowerCase());
+  let correctCount = 0;
+  for (const item of studentItems) {
+    if (correctItems.includes(item)) correctCount++;
+  }
+  const total = Math.max(studentItems.length, correctItems.length);
+  return correctCount / total >= 0.5 ? 1 : 0;
+}
+
+function gradePairing(answer, correctMap) {
+  if (!answer || !correctMap) return 0;
+  try {
+    const studentMap = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    const correct = typeof correctMap === 'string' ? JSON.parse(correctMap) : correctMap;
+    return Object.keys(correct).every(k => String(studentMap[k]) === String(correct[k])) ? 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function gradeTrueFalse(answer, correct) {
+  const a = normalizeAnswer(answer).toLowerCase();
+  const c = normalizeAnswer(correct).toLowerCase();
+  return a === c || (a === 't' && c === 'true') || (a === 'f' && c === 'false') ? 1 : 0;
+}
+
+function gradeEssay() {
+  return 'pending';
+}
+
+function gradeSingle(questionType, answer, correctOption, correctAnswer) {
+  switch (questionType) {
+    case 'multiple_choice':
+      return { isCorrect: gradeMC(answer, correctOption) ? 1 : 0, type: 'multiple_choice', value: answer, expected: correctOption };
+    case 'identification':
+      return { isCorrect: gradeIdentification(answer, correctAnswer) ? 1 : 0, type: 'identification', value: answer, expected: correctAnswer };
+    case 'enumeration':
+      return { isCorrect: gradeEnumeration(answer, correctAnswer), type: 'enumeration', value: answer, expected: correctAnswer };
+    case 'pairing':
+      return { isCorrect: gradePairing(answer, correctAnswer), type: 'pairing', value: answer, expected: correctAnswer };
+    case 'true_false':
+      return { isCorrect: gradeTrueFalse(answer, correctOption || correctAnswer), type: 'true_false', value: answer, expected: correctOption || correctAnswer };
+    case 'essay':
+      return { isCorrect: gradeEssay(), type: 'essay', value: answer, expected: null };
+    default:
+      return { isCorrect: gradeMC(answer, correctOption) ? 1 : 0, type: 'multiple_choice', value: answer, expected: correctOption };
+  }
+}
+
+export async function gradeParallel(answers, questionsMeta) {
   const startTime = Date.now();
 
   try {
-    if (answers.length !== answerKey.length) {
+    if (answers.length !== questionsMeta.length) {
       throw new Error('Answer count mismatch');
     }
 
-    // FORK: Create a worker promise for each question
-    const workerPromises = answers.map((answer, index) => {
+    const workerPromises = answers.map((item, index) => {
+      const q = questionsMeta[index];
+      const questionType = q.question_type || 'multiple_choice';
+      const correctOption = q.correct_option;
+      const correctAnswer = q.correct_answer;
+      const answerValue = item && typeof item === 'object' && 'answer' in item ? item.answer : item;
+
+      // For types that don't need heavy computation, grade inline
+      if (questionType !== 'multiple_choice') {
+        return Promise.resolve({
+          questionIndex: index,
+          ...gradeSingle(questionType, answerValue, correctOption, correctAnswer),
+          questionType,
+        });
+      }
+
+      // Use worker for MC questions (existing parallel pattern)
       return new Promise((resolve, reject) => {
         const worker = new Worker(GRADE_WORKER_PATH, {
-          workerData: {
-            answer,
-            correct: answerKey[index],
-          },
+          workerData: { answer: answerValue, correct: correctOption },
         });
 
-        // Set timeout to prevent hanging workers
         const timeout = setTimeout(() => {
           worker.terminate();
           reject(new Error(`Worker timeout for question ${index + 1}`));
@@ -75,6 +120,7 @@ export async function gradeParallel(answers, answerKey) {
             isCorrect: result.isCorrect,
             studentAnswer: result.answer,
             correctAnswer: result.correct,
+            questionType: 'multiple_choice',
           });
         });
 
@@ -86,17 +132,19 @@ export async function gradeParallel(answers, answerKey) {
       });
     });
 
-    // JOIN: Wait for all workers to complete
     const breakdown = await Promise.all(workerPromises);
 
-    // Calculate score
-    const score = breakdown.reduce((sum, item) => sum + item.isCorrect, 0);
+    const score = breakdown.reduce((sum, item) => {
+      if (item.isCorrect === 'pending') return sum;
+      return sum + (item.isCorrect || 0);
+    }, 0);
+    const essayCount = breakdown.filter(b => b.isCorrect === 'pending').length;
     const total = breakdown.length;
 
     const duration = Date.now() - startTime;
 
     console.log(
-      `✓ Graded ${total} questions in parallel (${duration}ms, score: ${score}/${total})`
+      `✓ Graded ${total} questions (${duration}ms, score: ${score}/${total}, essays: ${essayCount})`
     );
 
     return {
@@ -107,26 +155,27 @@ export async function gradeParallel(answers, answerKey) {
       gradingDuration: duration,
     };
   } catch (error) {
-    console.error('Parallel grading error:', error);
+    console.error('Grading error:', error);
     throw error;
   }
 }
 
-/**
- * Grade answers sequentially (for testing/comparison)
- * Shows why parallel is better
- */
-export async function gradeSequential(answers, answerKey) {
+export async function gradeSequential(answers, questionsMeta) {
   const startTime = Date.now();
 
-  const breakdown = answers.map((answer, index) => ({
-    questionIndex: index,
-    isCorrect: answer === answerKey[index] ? 1 : 0,
-    studentAnswer: answer,
-    correctAnswer: answerKey[index],
-  }));
+  const breakdown = answers.map((item, index) => {
+    const q = questionsMeta[index];
+    const answerValue = item && typeof item === 'object' && 'answer' in item ? item.answer : item;
+    return {
+      questionIndex: index,
+      ...gradeSingle(q.question_type || 'multiple_choice', answerValue, q.correct_option, q.correct_answer),
+    };
+  });
 
-  const score = breakdown.reduce((sum, item) => sum + item.isCorrect, 0);
+  const score = breakdown.reduce((sum, item) => {
+    if (item.isCorrect === 'pending') return sum;
+    return sum + (item.isCorrect || 0);
+  }, 0);
   const total = breakdown.length;
   const duration = Date.now() - startTime;
 

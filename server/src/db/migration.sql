@@ -1,8 +1,18 @@
--- Migration: Add is_admin column and seed additional exams
+-- Migration: Add is_admin column, category, question_type, and seed additional exams
 -- This runs on every server start and is idempotent
 
 ALTER TABLE students ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+
+-- Fix correct_option type from CHAR(1) to VARCHAR(5) to support empty string
+ALTER TABLE questions ALTER COLUMN correct_option TYPE VARCHAR(5);
+ALTER TABLE questions DROP CONSTRAINT IF EXISTS questions_correct_option_check;
+ALTER TABLE questions ADD CONSTRAINT questions_correct_option_check CHECK (correct_option IN ('A', 'B', 'C', 'D', 'T', 'F', ''));
 UPDATE students SET is_admin = TRUE WHERE username = 'student1';
+
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS category VARCHAR(50) DEFAULT 'quiz';
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS question_type VARCHAR(50) DEFAULT 'multiple_choice';
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS options_json JSONB DEFAULT '{}';
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS correct_answer JSONB;
 
 -- Insert exams that don't already exist
 INSERT INTO exams (title, description, duration_seconds) VALUES

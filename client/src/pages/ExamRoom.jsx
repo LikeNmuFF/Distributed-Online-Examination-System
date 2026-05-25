@@ -33,8 +33,9 @@ export default function ExamRoom({ user, onLogout }) {
         setQuestions(examResponse.data.questions);
 
         const initialAnswers = {};
-        examResponse.data.questions.forEach((_, idx) => {
-          initialAnswers[idx] = null;
+        examResponse.data.questions.forEach((q, idx) => {
+          const type = q.question_type || 'multiple_choice';
+          initialAnswers[idx] = (type === 'identification' || type === 'enumeration' || type === 'essay') ? '' : null;
         });
         setAnswers(initialAnswers);
 
@@ -306,38 +307,157 @@ export default function ExamRoom({ user, onLogout }) {
                   )}
                 </div>
 
+                {/* Question type badge */}
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="badge badge-accent">
+                    Q {currentQuestion + 1} / {questions.length}
+                  </span>
+                  <span className="badge badge-info text-[10px] uppercase tracking-wider">
+                    {question.question_type === 'multiple_choice' ? 'Multiple Choice' :
+                     question.question_type === 'enumeration' ? 'Enumeration' :
+                     question.question_type === 'identification' ? 'Identification' :
+                     question.question_type === 'pairing' ? 'Pairing' :
+                     question.question_type === 'true_false' ? 'True or False' :
+                     question.question_type === 'essay' ? 'Essay' : 'Multiple Choice'}
+                  </span>
+                  {answers[currentQuestion] !== null && answers[currentQuestion] !== undefined && answers[currentQuestion] !== '' && (
+                    <span className="badge badge-success">Answered</span>
+                  )}
+                </div>
+
                 {/* Question text */}
                 <h2 className="text-xl sm:text-2xl font-display font-semibold text-text-primary mb-8 leading-snug">
                   {question.question_text}
                 </h2>
 
-                {/* Options */}
-                <div className="space-y-3 mb-8">
-                  {['A', 'B', 'C', 'D'].map((option) => (
-                    <label
-                      key={option}
-                      className={`option-card ${
-                        answers[currentQuestion] === option ? 'selected' : ''
-                      }`}
-                    >
+                {/* Options - render based on question type */}
+                {question.question_type === 'multiple_choice' && (
+                  <div className="space-y-3 mb-8">
+                    {['A', 'B', 'C', 'D'].map((option) => (
+                      <label
+                        key={option}
+                        className={`option-card ${
+                          answers[currentQuestion] === option ? 'selected' : ''
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${currentQuestion}`}
+                          value={option}
+                          checked={answers[currentQuestion] === option}
+                          onChange={() => handleAnswerChange(option)}
+                          className="hidden"
+                        />
+                        <span className="option-letter">{option}</span>
+                        <span className="option-text">{question[`option_${option.toLowerCase()}`]}</span>
+                        {answers[currentQuestion] === option && (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto flex-shrink-0">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {question.question_type === 'true_false' && (
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    {['true', 'false'].map((val) => (
+                      <label
+                        key={val}
+                        className={`option-card text-center justify-center ${
+                          answers[currentQuestion] === val ? 'selected' : ''
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${currentQuestion}`}
+                          value={val}
+                          checked={answers[currentQuestion] === val}
+                          onChange={() => handleAnswerChange(val)}
+                          className="hidden"
+                        />
+                        <span className={`font-display font-bold text-lg ${answers[currentQuestion] === val ? 'text-accent' : 'text-text-primary'}`}>
+                          {val === 'true' ? 'True' : 'False'}
+                        </span>
+                        {answers[currentQuestion] === val && (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-2 flex-shrink-0">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {question.question_type === 'identification' && (
+                  <div className="mb-8">
+                    <label className="input mb-2">
                       <input
-                        type="radio"
-                        name={`question-${currentQuestion}`}
-                        value={option}
-                        checked={answers[currentQuestion] === option}
-                        onChange={() => handleAnswerChange(option)}
-                        className="hidden"
+                        type="text"
+                        value={answers[currentQuestion] || ''}
+                        onChange={(e) => handleAnswerChange(e.target.value)}
+                        className="w-full bg-transparent outline-none text-text-primary text-lg font-display placeholder:text-text-tertiary/50"
+                        placeholder="Type your answer..."
+                        autoComplete="off"
                       />
-                      <span className="option-letter">{option}</span>
-                      <span className="option-text">{question[`option_${option.toLowerCase()}`]}</span>
-                      {answers[currentQuestion] === option && (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto flex-shrink-0">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      )}
                     </label>
-                  ))}
-                </div>
+                    <p className="text-text-tertiary text-xs">Type the correct term or phrase</p>
+                  </div>
+                )}
+
+                {question.question_type === 'enumeration' && (
+                  <div className="mb-8">
+                    <label className="block text-text-secondary text-xs font-display font-semibold tracking-wider mb-3 uppercase">List your answers (one per line)</label>
+                    <textarea
+                      value={answers[currentQuestion] || ''}
+                      onChange={(e) => handleAnswerChange(e.target.value)}
+                      className="input min-h-[150px] resize-y font-mono text-sm"
+                      placeholder={`Item 1\nItem 2\nItem 3`}
+                    />
+                    <p className="text-text-tertiary text-xs mt-2">Enter each item on a separate line</p>
+                  </div>
+                )}
+
+                {question.question_type === 'pairing' && question.options_json && (
+                  <div className="mb-8">
+                    <label className="block text-text-secondary text-xs font-display font-semibold tracking-wider mb-3 uppercase">Match the items</label>
+                    <div className="space-y-3">
+                      {question.options_json.left.map((leftItem, pi) => (
+                        <div key={pi} className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle bg-bg-tertiary/20">
+                          <span className="text-sm text-text-primary font-display font-medium min-w-[120px]">{leftItem}</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                          <select
+                            value={(answers[currentQuestion] && answers[currentQuestion][pi]) || ''}
+                            onChange={(e) => {
+                              const current = answers[currentQuestion] || {};
+                              handleAnswerChange({ ...current, [pi]: e.target.value });
+                            }}
+                            className="input !py-2 flex-1"
+                          >
+                            <option value="">— Select match —</option>
+                            {question.options_json.right.map((rightItem, ri) => (
+                              <option key={ri} value={rightItem}>{rightItem}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {question.question_type === 'essay' && (
+                  <div className="mb-8">
+                    <label className="block text-text-secondary text-xs font-display font-semibold tracking-wider mb-3 uppercase">Your Answer</label>
+                    <textarea
+                      value={answers[currentQuestion] || ''}
+                      onChange={(e) => handleAnswerChange(e.target.value)}
+                      className="input min-h-[200px] resize-y text-sm leading-relaxed"
+                      placeholder="Write your essay response here..."
+                    />
+                    <p className="text-text-tertiary text-xs mt-2">This will be graded manually</p>
+                  </div>
+                )}
 
                 {/* Navigation */}
                 <div className="flex gap-3 pt-6 border-t border-border-subtle">

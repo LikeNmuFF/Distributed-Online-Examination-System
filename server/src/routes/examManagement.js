@@ -11,7 +11,7 @@ const router = express.Router();
  */
 router.post('/teacher/create', verifyToken, requireTeacher, async (req, res) => {
   try {
-    const { title, description, duration_seconds, questions } = req.body;
+    const { title, description, category, duration_seconds, questions } = req.body;
 
     if (!title || !questions || !Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({ error: 'Title and at least one question required' });
@@ -19,19 +19,28 @@ router.post('/teacher/create', verifyToken, requireTeacher, async (req, res) => 
 
     // Create exam
     const examResult = await postgres.query(
-      'INSERT INTO exams (title, description, duration_seconds) VALUES ($1, $2, $3) RETURNING id',
-      [title, description || '', duration_seconds || 1800]
+      'INSERT INTO exams (title, description, category, duration_seconds) VALUES ($1, $2, $3, $4) RETURNING id',
+      [title, description || '', category || 'quiz', duration_seconds || 1800]
     );
 
     const examId = examResult.rows[0].id;
 
     // Insert questions
     for (const q of questions) {
-      await postgres.query(
-        `INSERT INTO questions (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [examId, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.correct_option]
-      );
+      const questionType = q.question_type || 'multiple_choice';
+      if (questionType === 'multiple_choice') {
+        await postgres.query(
+          `INSERT INTO questions (exam_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_option)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [examId, q.question_text, questionType, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A']
+        );
+      } else {
+        await postgres.query(
+          `INSERT INTO questions (exam_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_option, options_json, correct_answer)
+           VALUES ($1, $2, $3, '', '', '', '', '', $4, $5)`,
+          [examId, q.question_text, questionType, JSON.stringify(q.options_json || {}), JSON.stringify(q.correct_answer)]
+        );
+      }
     }
 
     // Set teacher ownership
@@ -134,15 +143,11 @@ router.post('/:examId/add-to-classroom/:classroomId', verifyToken, requireTeache
   try {
     const { examId, classroomId } = req.params;
 
-    // Verify teacher owns the exam
-    const examOwner = await postgres.query(
-      'SELECT teacher_id FROM exam_ownership WHERE exam_id = $1',
-      [examId]
+    // Auto-assign ownership if not already owned
+    await postgres.query(
+      'INSERT INTO exam_ownership (exam_id, teacher_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [examId, req.user.id]
     );
-
-    if (examOwner.rows.length === 0 || examOwner.rows[0].teacher_id !== req.user.id) {
-      return res.status(403).json({ error: 'You do not own this exam' });
-    }
 
     // Verify teacher owns the classroom
     const classroomOwner = await postgres.query(
@@ -208,22 +213,19 @@ router.delete('/:examId/remove-from-classroom/:classroomId', verifyToken, requir
 
 /**
  * GET /api/exams/teacher/list
- * Teacher gets list of their exams
+ * Returns ALL exams for teachers to browse when adding to classrooms
  */
 router.get('/teacher/list', verifyToken, requireTeacher, async (req, res) => {
   try {
     const result = await postgres.query(
-      `SELECT e.id, e.title, e.description, e.duration_seconds, e.created_at,
+       `SELECT e.id, e.title, e.description, e.category, e.duration_seconds, e.created_at,
               COUNT(q.id)::int AS question_count,
               COUNT(ce.id)::int AS classroom_count
        FROM exams e
-       JOIN exam_ownership eo ON e.id = eo.exam_id
        LEFT JOIN questions q ON q.exam_id = e.id
        LEFT JOIN classroom_exams ce ON e.id = ce.exam_id
-       WHERE eo.teacher_id = $1
        GROUP BY e.id
-       ORDER BY e.created_at DESC`,
-      [req.user.id]
+       ORDER BY e.created_at DESC`
     );
 
     res.json({

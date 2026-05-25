@@ -47,16 +47,22 @@ submissionQueue.process(async (job) => {
   try {
     console.log(`🔄 Processing submission ${job.id}: student ${studentId}, exam ${examId}`);
 
-    // Fetch answer key from database
+    // Fetch questions with types and answer keys from database
     const result = await postgres.query(
-      `SELECT id, correct_option FROM questions WHERE exam_id = $1 ORDER BY id ASC`,
+      `SELECT id, question_type, correct_option, correct_answer
+       FROM questions WHERE exam_id = $1 ORDER BY id ASC`,
       [examId]
     );
 
-    const answerKey = result.rows.map((row) => row.correct_option);
+    const questionsMeta = result.rows.map((row) => ({
+      id: row.id,
+      question_type: row.question_type || 'multiple_choice',
+      correct_option: row.correct_option,
+      correct_answer: row.correct_answer || null,
+    }));
 
     // PARALLEL GRADING: Grade all answers concurrently
-    const gradeResult = await gradeParallel(answers, answerKey);
+    const gradeResult = await gradeParallel(answers, questionsMeta);
 
     // Save submission results to database
     const insertResult = await postgres.query(

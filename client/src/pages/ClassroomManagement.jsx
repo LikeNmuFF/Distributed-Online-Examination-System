@@ -74,6 +74,22 @@ export default function ClassroomManagement() {
     }
   };
 
+  const examsByCategory = teacherExams.reduce((acc, exam) => {
+    const cat = exam.category || 'quiz';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(exam);
+    return acc;
+  }, {});
+
+  const categoryLabels = {
+    quiz: 'Quiz',
+    long_quiz: 'Long Quiz',
+    midterm: 'Midterm',
+    final: 'Final Exam',
+  };
+
+  const categoryOrder = ['quiz', 'long_quiz', 'midterm', 'final'];
+
   const handleAddExam = async (e) => {
     e.preventDefault();
     if (!selectedExamId) {
@@ -272,18 +288,26 @@ export default function ClassroomManagement() {
                 <h3 className="text-lg font-display font-bold text-text-primary mb-4">Add Exam</h3>
                 <form onSubmit={handleAddExam} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Select Exam</label>
+                    <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Select Exam by Category</label>
                     <select
                       value={selectedExamId}
                       onChange={(e) => setSelectedExamId(e.target.value)}
                       className="input w-full"
                     >
                       <option value="">Choose an exam...</option>
-                      {teacherExams.map((exam) => (
-                        <option key={exam.id} value={exam.id}>
-                          {exam.title} ({exam.question_count} questions)
-                        </option>
-                      ))}
+                      {categoryOrder.map((cat) => {
+                        const exams = examsByCategory[cat];
+                        if (!exams || exams.length === 0) return null;
+                        return (
+                          <optgroup key={cat} label={categoryLabels[cat] || cat}>
+                            {exams.map((exam) => (
+                              <option key={exam.id} value={exam.id}>
+                                {exam.title} ({exam.question_count} questions)
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
                     </select>
                   </div>
                   <div className="flex gap-3">
@@ -308,6 +332,17 @@ export default function ClassroomManagement() {
                   <div key={exam.id} className="p-6 rounded-xl border border-border-subtle bg-glass-bg backdrop-filter backdrop-blur-xl">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-display font-bold px-2 py-0.5 rounded-full ${
+                            exam.category === 'quiz' ? 'bg-teal/20 text-teal' :
+                            exam.category === 'long_quiz' ? 'bg-blue-500/20 text-blue-400' :
+                            exam.category === 'midterm' ? 'bg-gold/20 text-gold' :
+                            exam.category === 'final' ? 'bg-accent/20 text-accent' :
+                            'bg-text-secondary/20 text-text-secondary'
+                          }`}>
+                            {categoryLabels[exam.category] || exam.category || 'Quiz'}
+                          </span>
+                        </div>
                         <h3 className="font-display font-bold text-text-primary">{exam.title}</h3>
                         {exam.description && (
                           <p className="text-sm text-text-secondary mt-1 line-clamp-2">{exam.description}</p>

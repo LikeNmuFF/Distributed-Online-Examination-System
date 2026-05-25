@@ -198,7 +198,7 @@ router.get('/classrooms/:classroomId', verifyToken, requireTeacher, async (req, 
 
     // Get exams in classroom
     const examsResult = await postgres.query(
-      `SELECT e.id, e.title, e.description, e.duration_seconds, ce.created_at
+      `SELECT e.id, e.title, e.description, e.category, e.duration_seconds, ce.created_at
        FROM classroom_exams ce
        JOIN exams e ON ce.exam_id = e.id
        WHERE ce.classroom_id = $1

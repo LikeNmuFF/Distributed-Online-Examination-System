@@ -480,6 +480,12 @@ h3 {
   border-color: rgba(45, 212, 191, 0.3);
 }
 
+.badge-info {
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--teal);
+  border-color: rgba(45, 212, 191, 0.25);
+}
+
 /* Timer */
 .timer {
   display: flex;

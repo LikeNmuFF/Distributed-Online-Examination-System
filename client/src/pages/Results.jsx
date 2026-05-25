@@ -278,42 +278,65 @@ export default function Results({ user, onLogout }) {
             </div>
           </div>
 
+          {/* Question type stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            {['multiple_choice', 'true_false', 'identification', 'enumeration', 'pairing', 'essay'].map(type => {
+              const typeBreakdown = breakdown.filter(q => q.questionType === type);
+              if (typeBreakdown.length === 0) return null;
+              const correct = typeBreakdown.filter(q => q.isCorrect === 1).length;
+              const total = typeBreakdown.length;
+              return (
+                <div key={type} className="p-3 rounded-lg border border-border-subtle bg-bg-tertiary/20 text-center">
+                  <p className="text-[10px] font-display font-semibold text-text-tertiary uppercase tracking-wider mb-1">
+                    {type === 'multiple_choice' ? 'MC' : type === 'true_false' ? 'T/F' : type === 'identification' ? 'ID' : type === 'enumeration' ? 'Enum' : type === 'pairing' ? 'Pair' : 'Essay'}
+                  </p>
+                  <p className="text-lg font-display font-bold text-text-primary">{correct}/{total}</p>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-subtle">
                   <th className="text-left py-3 px-2 text-text-tertiary font-display font-semibold text-xs uppercase tracking-wider">Q</th>
+                  <th className="text-left py-3 px-2 text-text-tertiary font-display font-semibold text-xs uppercase tracking-wider">Type</th>
                   <th className="text-center py-3 px-2 text-text-tertiary font-display font-semibold text-xs uppercase tracking-wider">Your Answer</th>
                   <th className="text-center py-3 px-2 text-text-tertiary font-display font-semibold text-xs uppercase tracking-wider">Correct</th>
                   <th className="text-center py-3 px-2 text-text-tertiary font-display font-semibold text-xs uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {breakdown.map((q, idx) => (
-                  <tr key={idx} className="border-b border-border-subtle last:border-b-0">
-                    <td className="py-3 px-2 font-display font-semibold text-text-primary">{idx + 1}</td>
-                    <td className="py-3 px-2 text-center">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-md text-sm font-display font-bold ${
-                        q.isCorrect ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-                      }`}>
-                        {q.studentAnswer || '—'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-sm font-display font-bold bg-bg-tertiary text-text-secondary">
-                        {q.correctAnswer}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      {q.isCorrect ? (
-                        <span className="badge badge-success">Correct</span>
-                      ) : (
-                        <span className="badge badge-error">Wrong</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {breakdown.map((q, idx) => {
+                  const typeLabel = q.questionType === 'multiple_choice' ? 'MC' : q.questionType === 'true_false' ? 'T/F' : q.questionType === 'identification' ? 'ID' : q.questionType === 'enumeration' ? 'Enum' : q.questionType === 'pairing' ? 'Pair' : q.questionType === 'essay' ? 'Essay' : '?';
+                  const displayAnswer = q.questionType === 'enumeration' ? (typeof q.studentAnswer === 'string' ? q.studentAnswer.split('\n').length + ' items' : q.studentAnswer || '—') : q.studentAnswer || '—';
+                  const displayCorrect = q.questionType === 'enumeration' ? (Array.isArray(q.correctAnswer) ? q.correctAnswer.length + ' items' : q.expected || '—') : q.questionType === 'pairing' ? 'mapping' : q.expected || q.correctAnswer || '—';
+                  return (
+                    <tr key={idx} className="border-b border-border-subtle last:border-b-0">
+                      <td className="py-3 px-2 font-display font-semibold text-text-primary">{idx + 1}</td>
+                      <td className="py-3 px-2">
+                        <span className="text-[10px] font-display font-semibold text-text-tertiary uppercase tracking-wider">{typeLabel}</span>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <span className="text-sm font-display font-medium text-text-primary">{displayAnswer}</span>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <span className="text-sm font-display font-medium text-text-secondary">{displayCorrect}</span>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        {q.isCorrect === 1 ? (
+                          <span className="badge badge-success">Correct</span>
+                        ) : q.isCorrect === 'pending' ? (
+                          <span className="badge badge-warning">Pending</span>
+                        ) : (
+                          <span className="badge badge-error">Wrong</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

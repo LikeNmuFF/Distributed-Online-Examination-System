@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS exams (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255) UNIQUE NOT NULL,
   description TEXT,
+  category VARCHAR(50) DEFAULT 'quiz',
   duration_seconds INTEGER NOT NULL DEFAULT 3600,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -21,11 +22,14 @@ CREATE TABLE IF NOT EXISTS questions (
   id SERIAL PRIMARY KEY,
   exam_id INTEGER REFERENCES exams(id) ON DELETE CASCADE,
   question_text TEXT NOT NULL,
-  option_a TEXT NOT NULL,
-  option_b TEXT NOT NULL,
-  option_c TEXT NOT NULL,
-  option_d TEXT NOT NULL,
-  correct_option CHAR(1) NOT NULL CHECK (correct_option IN ('A', 'B', 'C', 'D'))
+  question_type VARCHAR(50) DEFAULT 'multiple_choice',
+  option_a TEXT DEFAULT '',
+  option_b TEXT DEFAULT '',
+  option_c TEXT DEFAULT '',
+  option_d TEXT DEFAULT '',
+  correct_option VARCHAR(5) DEFAULT 'A' CHECK (correct_option IN ('A', 'B', 'C', 'D', 'T', 'F', '')),
+  options_json JSONB DEFAULT '{}',
+  correct_answer JSONB
 );
 
 CREATE TABLE IF NOT EXISTS submissions (

@@ -204,23 +204,9 @@ export default function Login({ onLogin }) {
               </button>
             </div>
 
-              <p className="mt-8 text-[11px] text-text-tertiary text-center leading-relaxed">
-                Powered by 3-node cluster with load balancing, redis DSM, and parallel grading.
-              </p>
-              <div className="mt-6 text-center">
-                <a
-                  href="/scoreboard"
-                  className="text-xs text-accent hover:text-accent-hover transition-colors font-display font-semibold tracking-wider uppercase inline-flex items-center gap-2"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10"/>
-                    <line x1="12" y1="20" x2="12" y2="4"/>
-                    <line x1="6" y1="20" x2="6" y2="14"/>
-                  </svg>
-                  View Public Scoreboard
-                </a>
-              </div>
-            </div>
+            <p className="mt-8 text-[11px] text-text-tertiary text-center leading-relaxed">
+              Powered by 3-node cluster with load balancing, redis DSM, and parallel grading.
+            </p>
           </div>
         </div>
       </div>
