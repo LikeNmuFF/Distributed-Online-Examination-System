@@ -25,6 +25,11 @@ import pool, { runMigration } from './db/postgres.js';
 import authRoutes from './routes/auth.js';
 import examsRoutes from './routes/exams.js';
 import submissionsRoutes from './routes/submissions.js';
+import teachersRoutes from './routes/teachers.js';
+import classroomsRoutes from './routes/classrooms.js';
+import classroomJoinRoutes from './routes/classroomJoin.js';
+import examManagementRoutes from './routes/examManagement.js';
+import analyticsRoutes from './routes/analytics.js';
 import { verifyToken } from './middleware/auth.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
 
@@ -54,8 +59,13 @@ app.use(rateLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/teachers', teachersRoutes);
+app.use('/api/classrooms', classroomsRoutes);
+app.use('/api/classroom-join', classroomJoinRoutes);
 app.use('/api/exams', examsRoutes);
+app.use('/api/exam-management', examManagementRoutes);
 app.use('/api/submissions', submissionsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 /**
  * Health Check Endpoint

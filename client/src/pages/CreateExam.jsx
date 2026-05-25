@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { examsAPI } from '../services/api';
+import { examsAPI, examManagementAPI } from '../services/api';
 
 const emptyQuestion = () => ({
   question_text: '',
@@ -54,7 +54,9 @@ export default function CreateExam({ user, onLogout }) {
 
     try {
       setSubmitting(true);
-      await examsAPI.create({
+      const isTeacher = user?.userType === 'teacher';
+      const createAPI = isTeacher ? examManagementAPI.create : examsAPI.create;
+      await createAPI({
         title: title.trim(),
         description: description.trim(),
         duration_seconds: duration * 60,
@@ -67,7 +69,7 @@ export default function CreateExam({ user, onLogout }) {
           correct_option: q.correct_option,
         })),
       });
-      navigate('/exams');
+      navigate(isTeacher ? '/teacher-dashboard' : '/exams');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create exam');
     } finally {

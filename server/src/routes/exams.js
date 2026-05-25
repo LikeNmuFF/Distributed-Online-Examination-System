@@ -100,6 +100,21 @@ router.post('/:id/start', verifyToken, async (req, res) => {
     const studentId = req.user.id;
     const nodeId = process.env.NODE_ID || 'unknown';
 
+    // For students, verify they have access to this exam through a classroom
+    if (req.user.userType === 'student') {
+      const accessCheck = await postgres.query(
+        `SELECT ce.exam_id 
+         FROM classroom_exams ce
+         JOIN classroom_members cm ON ce.classroom_id = cm.classroom_id
+         WHERE ce.exam_id = $1 AND cm.student_id = $2 AND cm.status = 'approved'`,
+        [examId, studentId]
+      );
+
+      if (accessCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'You do not have access to this exam. Join a classroom with this exam first.' });
+      }
+    }
+
     const examResult = await postgres.query(
       'SELECT id, duration_seconds FROM exams WHERE id = $1',
       [examId]

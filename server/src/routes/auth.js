@@ -31,7 +31,7 @@ router.post('/login', authLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = generateToken(student.id, student.username, student.is_admin);
+    const token = generateToken(student.id, student.username, 'student', student.is_admin);
 
     res.json({
       success: true,
@@ -82,7 +82,7 @@ router.post('/register', authLimiter, async (req, res) => {
     );
 
     const student = result.rows[0];
-    const token = generateToken(student.id, student.username, false);
+    const token = generateToken(student.id, student.username, 'student', false);
 
     res.status(201).json({
       success: true,
@@ -115,6 +115,7 @@ router.get('/me', verifyToken, async (req, res) => {
         id: result.rows[0].id,
         username: result.rows[0].username,
         isAdmin: result.rows[0].is_admin,
+        userType: 'student',
       },
     });
   } catch (error) {
