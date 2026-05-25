@@ -1,0 +1,120 @@
+services:
+  # Redis for distributed state: sessions, timers, locks
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL for persistent exam data
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: exam_db
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exam_user -d exam_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Exam Node 1
+  exam-node-1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ID: "1"
+      NODE_PORT: "3001"
+      REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgresql://exam_user:exam_password@postgres:5432/exam_db"
+      JWT_SECRET: "your-secret-key-change-in-prod"
+      NODE_ENV: "development"
+    ports:
+      - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # Exam Node 2
+  exam-node-2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ID: "2"
+      NODE_PORT: "3002"
+      REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgresql://exam_user:exam_password@postgres:5432/exam_db"
+      JWT_SECRET: "your-secret-key-change-in-prod"
+      NODE_ENV: "development"
+    ports:
+      - "3002:3002"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # Exam Node 3
+  exam-node-3:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ID: "3"
+      NODE_PORT: "3003"
+      REDIS_URL: "redis://redis:6379"
+      DATABASE_URL: "postgresql://exam_user:exam_password@postgres:5432/exam_db"
+      JWT_SECRET: "your-secret-key-change-in-prod"
+      NODE_ENV: "development"
+    ports:
+      - "3003:3003"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - exam-node-1
+      - exam-node-2
+      - exam-node-3
+
+  # React Frontend
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    environment:
+      VITE_API_URL: "http://localhost"
+    depends_on:
+      - nginx
+
+volumes:
+  redis_data:
+  postgres_data:
