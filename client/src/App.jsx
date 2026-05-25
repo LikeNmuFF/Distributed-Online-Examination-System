@@ -5,6 +5,9 @@ import ExamList from './pages/ExamList';
 import ExamRoom from './pages/ExamRoom';
 import Results from './pages/Results';
 import CreateExam from './pages/CreateExam';
+import TeacherDashboard from './pages/TeacherDashboard';
+import ClassroomManagement from './pages/ClassroomManagement';
+import StudentJoinClassroom from './pages/StudentJoinClassroom';
 import './index.css';
 
 export default function App() {
@@ -56,12 +59,40 @@ export default function App() {
           path="/"
           element={
             isAuthenticated ? (
-              <Navigate to="/exams" replace />
+              user?.userType === 'teacher' ? (
+                <Navigate to="/teacher-dashboard" replace />
+              ) : (
+                <Navigate to="/exams" replace />
+              )
             ) : (
               <Login onLogin={handleLogin} />
             )
           }
         />
+        
+        {/* Teacher Routes */}
+        <Route
+          path="/teacher-dashboard"
+          element={
+            isAuthenticated && user?.userType === 'teacher' ? (
+              <TeacherDashboard user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/classroom/:classroomId"
+          element={
+            isAuthenticated && user?.userType === 'teacher' ? (
+              <ClassroomManagement />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        
+        {/* Student Routes */}
         <Route
           path="/exams"
           element={
@@ -73,9 +104,19 @@ export default function App() {
           }
         />
         <Route
+          path="/join-classroom"
+          element={
+            isAuthenticated && user?.userType === 'student' ? (
+              <StudentJoinClassroom />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
           path="/exams/create"
           element={
-            isAuthenticated && user?.isAdmin ? (
+            isAuthenticated && (user?.isAdmin || user?.userType === 'teacher') ? (
               <CreateExam user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/exams" replace />

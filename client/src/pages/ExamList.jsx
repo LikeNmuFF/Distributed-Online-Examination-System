@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { examsAPI } from '../services/api';
+import { examsAPI, classroomJoinAPI } from '../services/api';
 
 export default function ExamList({ user, onLogout }) {
   const [exams, setExams] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [nodes, setNodes] = useState([]);
   const [showArchitecture, setShowArchitecture] = useState(false);
+  const [selectedClassroom, setSelectedClassroom] = useState('all');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchExams();
     checkNodes();
+    if (user?.userType === 'student') {
+      fetchMyClassrooms();
+    }
     const interval = setInterval(checkNodes, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -27,6 +32,15 @@ export default function ExamList({ user, onLogout }) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMyClassrooms = async () => {
+    try {
+      const response = await classroomJoinAPI.getMyClassrooms();
+      setClassrooms(response.data.classrooms);
+    } catch (err) {
+      console.error('Failed to fetch classrooms:', err);
     }
   };
 
@@ -65,6 +79,9 @@ export default function ExamList({ user, onLogout }) {
   };
 
   const onlineNodes = nodes.filter(n => n.status === 'online').length;
+
+  const isTeacher = user?.userType === 'teacher';
+  const isStudent = user?.userType === 'student';
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
@@ -114,11 +131,39 @@ export default function ExamList({ user, onLogout }) {
                 <span className="hidden sm:inline">New Exam</span>
               </button>
             )}
+            {isTeacher && (
+              <button
+                onClick={() => navigate('/teacher-dashboard')}
+                className="btn-primary text-xs !py-2 !px-4"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <span className="hidden sm:inline">Dashboard</span>
+              </button>
+            )}
+            {isStudent && (
+              <button
+                onClick={() => navigate('/join-classroom')}
+                className="btn-primary text-xs !py-2 !px-4"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <span className="hidden sm:inline">Join Class</span>
+              </button>
+            )}
             <div className="hidden sm:flex items-center gap-2 text-sm text-text-secondary pl-3 border-l border-border-subtle">
               <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
               <span className="text-xs font-medium">{user?.username}</span>
-              {user?.isAdmin && (
+              {user?.userType === 'teacher' ? (
+                <span className="badge badge-accent text-[9px] !px-2 !py-0.5">Teacher</span>
+              ) : user?.isAdmin ? (
                 <span className="badge badge-accent text-[9px] !px-2 !py-0.5">Admin</span>
+              ) : (
+                <span className="badge text-[9px] !px-2 !py-0.5 bg-bg-tertiary text-text-secondary">Student</span>
               )}
             </div>
             <button onClick={onLogout} className="btn-ghost">
@@ -242,6 +287,58 @@ export default function ExamList({ user, onLogout }) {
             ))}
           </div>
         </div>
+
+        {/* Classroom Filter for Students */}
+        {isStudent && classrooms.length > 0 && (
+          <div className="card-elevated p-5 mb-8 animate-fadeInUp">
+            <h3 className="font-display font-bold text-text-primary uppercase tracking-widest text-xs mb-4">Your Classrooms</h3>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setSelectedClassroom('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-display font-semibold transition-all ${
+                  selectedClassroom === 'all'
+                    ? 'bg-accent text-white'
+                    : 'bg-bg-tertiary/50 text-text-secondary hover:text-text-primary border border-border-subtle'
+                }`}
+              >
+                All Exams
+              </button>
+              {classrooms.map((c) => (
+                <div key={c.id} className="relative group">
+                  <button
+                    onClick={() => setSelectedClassroom(c.id.toString())}
+                    className={`px-4 py-2 rounded-lg text-sm font-display font-semibold transition-all ${
+                      selectedClassroom === c.id.toString()
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary/50 text-text-secondary hover:text-text-primary border border-border-subtle'
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent rounded-full flex items-center justify-center text-[9px] font-bold text-white">
+                    {c.exam_count}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Student Classrooms Quick Access */}
+        {isStudent && classrooms.length === 0 && !loading && (
+          <div className="p-5 mb-8 rounded-xl border border-border-subtle bg-glass-bg backdrop-filter backdrop-blur-xl animate-fadeInUp">
+            <p className="text-sm text-text-secondary text-center">
+              You haven't joined any classrooms yet.{' '}
+              <button
+                onClick={() => navigate('/join-classroom')}
+                className="text-accent hover:text-accent-hover font-semibold"
+              >
+                Join a classroom
+              </button>
+              {' '}to access exams.
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="alert alert-error mb-8 animate-scaleIn">

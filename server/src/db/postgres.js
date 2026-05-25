@@ -65,6 +65,14 @@ export async function runMigration() {
       await pool.query(migration);
       console.log(`✓ Database migration applied (${process.env.NODE_ID || 'unknown'})`);
     }
+
+    // Apply v2 migration for teachers and classrooms
+    const migrationV2Path = path.join(__dirname, 'migration_v2_teachers_classrooms.sql');
+    if (fs.existsSync(migrationV2Path)) {
+      const migrationV2 = fs.readFileSync(migrationV2Path, 'utf8');
+      await pool.query(migrationV2);
+      console.log(`✓ Database v2 migration applied (${process.env.NODE_ID || 'unknown'})`);
+    }
   } catch (error) {
     console.error('✗ Database migration error:', error);
     throw error;
