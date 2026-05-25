@@ -8,6 +8,7 @@ import CreateExam from './pages/CreateExam';
 import TeacherDashboard from './pages/TeacherDashboard';
 import ClassroomManagement from './pages/ClassroomManagement';
 import StudentJoinClassroom from './pages/StudentJoinClassroom';
+import PublicScoreboard from './pages/PublicScoreboard';
 import './index.css';
 
 export default function App() {
@@ -68,6 +69,10 @@ export default function App() {
               <Login onLogin={handleLogin} />
             )
           }
+        />
+        <Route
+          path="/scoreboard"
+          element={<PublicScoreboard />}
         />
         
         {/* Teacher Routes */}

@@ -120,4 +120,15 @@ export const analyticsAPI = {
     api.get(`/analytics/student/exams/${examId}`),
 };
 
+export const scoreboardAPI = {
+  getAll: (classroom, exam) => {
+    const params = new URLSearchParams();
+    if (classroom) params.append('classroom', classroom);
+    if (exam) params.append('exam', exam);
+    return api.get(`/scoreboard?${params.toString()}`);
+  },
+  getClassrooms: () => api.get('/scoreboard/classrooms'),
+  getExams: () => api.get('/scoreboard/exams'),
+};
+
 export default api;
