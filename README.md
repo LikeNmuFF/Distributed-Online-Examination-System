@@ -153,7 +153,9 @@ upstream exam_nodes {
 // Submissions queued, processed asynchronously
 // Prevents overload and data loss
 const job = await submissionQueue.add({
-  studentId, examId, answers
+  studentId,
+  examId,
+  answers,
 });
 ```
 
@@ -176,7 +178,7 @@ const session = await redis.hgetall(`session:${studentId}:${examId}`);
 // index.js
 // Every node broadcasts timer ticks
 // All students in same exam see identical countdown
-socket.to(room).emit('timer:tick', { remainingMs });
+socket.to(room).emit("timer:tick", { remainingMs });
 ```
 
 **PDC Concept**: Distributed Synchronization, Real-time Communication
@@ -192,6 +194,7 @@ node simulate.js
 ```
 
 This will:
+
 1. Login 50 students (cycling through student1/2/3)
 2. All start the same exam simultaneously
 3. All answer randomly and submit
@@ -199,6 +202,7 @@ This will:
 5. Report total grading time
 
 **Expected Output**:
+
 ```
 ✓ 50 students logged in
 ✓ Node 1: 18 students, Node 2: 16 students, Node 3: 16 students
@@ -246,15 +250,15 @@ docker-compose start exam-node-1
 
 ### How to Explain Each Feature
 
-| Feature | How to Explain | Evidence |
-|---------|---|---|
-| **Parallelism** | "Multiple students take exams simultaneously across 3 nodes" | Load test output showing 50 concurrent students |
-| **Parallel Grading** | "Answers graded in parallel using worker_threads (fork-join)" | Code in graderService.js, timing comparisons |
-| **Distributed State** | "Timers & sessions stored in Redis, shared across all nodes" | timerService.js, sessionService.js |
-| **Load Balancing** | "Nginx uses least-conn to distribute traffic evenly" | nginx.conf, load test output |
-| **Message Queue** | "Submissions queued in Bull to prevent loss under load" | queueService.js, no submissions lost in load test |
-| **Fault Tolerance** | "Sessions survive node crashes, students reconnect automatically" | Demo: docker stop exam-node-1, student continues |
-| **Real-time Sync** | "Socket.IO broadcasts timer ticks every second to all nodes" | index.js, Timer.jsx component |
+| Feature               | How to Explain                                                    | Evidence                                          |
+| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------- |
+| **Parallelism**       | "Multiple students take exams simultaneously across 3 nodes"      | Load test output showing 50 concurrent students   |
+| **Parallel Grading**  | "Answers graded in parallel using worker_threads (fork-join)"     | Code in graderService.js, timing comparisons      |
+| **Distributed State** | "Timers & sessions stored in Redis, shared across all nodes"      | timerService.js, sessionService.js                |
+| **Load Balancing**    | "Nginx uses least-conn to distribute traffic evenly"              | nginx.conf, load test output                      |
+| **Message Queue**     | "Submissions queued in Bull to prevent loss under load"           | queueService.js, no submissions lost in load test |
+| **Fault Tolerance**   | "Sessions survive node crashes, students reconnect automatically" | Demo: docker stop exam-node-1, student continues  |
+| **Real-time Sync**    | "Socket.IO broadcasts timer ticks every second to all nodes"      | index.js, Timer.jsx component                     |
 
 ## 🛠️ Development
 
@@ -307,18 +311,22 @@ npm run dev
 ## 🚨 Troubleshooting
 
 ### "Connection refused"
+
 - Check all services are running: `docker-compose ps`
 - Wait for containers to be healthy: `docker-compose logs`
 
 ### "Database not initialized"
+
 - Delete postgres volume: `docker-compose down -v`
 - Restart: `docker-compose up --build`
 
 ### "Socket.IO not connecting"
+
 - Check nginx routing for `/socket.io` path
 - Browser console should show connection attempts
 
 ### "Submissions not grading"
+
 - Check Redis is running: `docker-compose logs redis`
 - Check Bull queue: `docker-compose logs exam-node-1 | grep queue`
 
@@ -328,6 +336,6 @@ MIT
 
 ---
 
-**Built for**: Parallel and Distributed Computing Course  
+**Built for**: Automata Theory and Formal Language
 **Version**: 1.0.0  
-**Author**: [Your Name]
+**Author**: Klein, Erica Joy, Robert, Rhafael, Christelle Joy, Michelle, Romarie, Saima, Patrick Lance, Kurt
