@@ -23,8 +23,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-      - ./server/src/db/migration_v2_teachers_classrooms.sql:/docker-entrypoint-initdb.d/migration_v2.sql
+      - ./server/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./server/src/db/migration_v2_teachers_classrooms.sql:/docker-entrypoint-initdb.d/99_migration_v2.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U exam_user -d exam_db"]
       interval: 5s
@@ -109,6 +109,8 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://localhost"
     ports:
       - "5173:80"
     environment:

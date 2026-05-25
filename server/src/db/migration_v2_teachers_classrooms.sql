@@ -96,28 +96,55 @@ ON CONFLICT (username) DO NOTHING;
 
 -- ===== SETUP DEMO CLASSROOM =====
 -- Create sample classrooms for teacher1
-INSERT INTO classrooms (teacher_id, name, description, join_code) VALUES
-  (1, 'Introduction to Databases', 'A comprehensive course on database fundamentals', 'DB101'),
-  (1, 'Advanced Networking', 'Deep dive into network protocols and architecture', 'NET201')
-ON CONFLICT DO NOTHING;
+INSERT INTO classrooms (teacher_id, name, description, join_code)
+SELECT t.id, 'Introduction to Databases', 'A comprehensive course on database fundamentals', 'DB101'
+FROM teachers t WHERE t.username = 'teacher1'
+  AND NOT EXISTS (SELECT 1 FROM classrooms c WHERE c.join_code = 'DB101');
+INSERT INTO classrooms (teacher_id, name, description, join_code)
+SELECT t.id, 'Advanced Networking', 'Deep dive into network protocols and architecture', 'NET201'
+FROM teachers t WHERE t.username = 'teacher1'
+  AND NOT EXISTS (SELECT 1 FROM classrooms c WHERE c.join_code = 'NET201');
 
 -- Assign existing exams to teacher1 (exam_ownership)
-INSERT INTO exam_ownership (exam_id, teacher_id) VALUES
-  (1, 1), (2, 1), (3, 1), (4, 1), (5, 1)
-ON CONFLICT DO NOTHING;
+INSERT INTO exam_ownership (exam_id, teacher_id)
+SELECT e.id, 1 FROM exams e WHERE e.title = 'Parallel & Distributed Computing Midterm'
+  AND NOT EXISTS (SELECT 1 FROM exam_ownership eo WHERE eo.exam_id = e.id AND eo.teacher_id = 1);
+INSERT INTO exam_ownership (exam_id, teacher_id)
+SELECT e.id, 1 FROM exams e WHERE e.title = 'Data Structures & Algorithms'
+  AND NOT EXISTS (SELECT 1 FROM exam_ownership eo WHERE eo.exam_id = e.id AND eo.teacher_id = 1);
+INSERT INTO exam_ownership (exam_id, teacher_id)
+SELECT e.id, 1 FROM exams e WHERE e.title = 'Operating Systems'
+  AND NOT EXISTS (SELECT 1 FROM exam_ownership eo WHERE eo.exam_id = e.id AND eo.teacher_id = 1);
+INSERT INTO exam_ownership (exam_id, teacher_id)
+SELECT e.id, 1 FROM exams e WHERE e.title = 'Computer Networks'
+  AND NOT EXISTS (SELECT 1 FROM exam_ownership eo WHERE eo.exam_id = e.id AND eo.teacher_id = 1);
+INSERT INTO exam_ownership (exam_id, teacher_id)
+SELECT e.id, 1 FROM exams e WHERE e.title = 'Database Management Systems'
+  AND NOT EXISTS (SELECT 1 FROM exam_ownership eo WHERE eo.exam_id = e.id AND eo.teacher_id = 1);
 
 -- Add exams to classrooms
-INSERT INTO classroom_exams (classroom_id, exam_id) VALUES
-  (1, 5), -- DBMS exam in Databases classroom
-  (2, 4)  -- Networks exam in Networking classroom
-ON CONFLICT DO NOTHING;
+INSERT INTO classroom_exams (classroom_id, exam_id)
+SELECT c.id, e.id FROM classrooms c, exams e
+WHERE c.join_code = 'DB101' AND e.title = 'Database Management Systems'
+  AND NOT EXISTS (SELECT 1 FROM classroom_exams ce WHERE ce.classroom_id = c.id AND ce.exam_id = e.id);
+INSERT INTO classroom_exams (classroom_id, exam_id)
+SELECT c.id, e.id FROM classrooms c, exams e
+WHERE c.join_code = 'NET201' AND e.title = 'Computer Networks'
+  AND NOT EXISTS (SELECT 1 FROM classroom_exams ce WHERE ce.classroom_id = c.id AND ce.exam_id = e.id);
 
 -- Create demo student enrollment requests (some pending, some approved)
-INSERT INTO classroom_members (classroom_id, student_id, status, approved_by, approved_at) VALUES
-  (1, 2, 'approved', 1, NOW()),  -- student2 is approved in Databases classroom
-  (1, 3, 'pending', NULL, NULL),  -- student3 is pending in Databases classroom
-  (2, 2, 'approved', 1, NOW())   -- student2 is approved in Networking classroom
-ON CONFLICT DO NOTHING;
+INSERT INTO classroom_members (classroom_id, student_id, status, approved_by, approved_at)
+SELECT c.id, s.id, 'approved', 1, NOW() FROM classrooms c, students s
+WHERE c.join_code = 'DB101' AND s.username = 'student2'
+  AND NOT EXISTS (SELECT 1 FROM classroom_members cm WHERE cm.classroom_id = c.id AND cm.student_id = s.id);
+INSERT INTO classroom_members (classroom_id, student_id, status, approved_by, approved_at)
+SELECT c.id, s.id, 'pending', NULL, NULL FROM classrooms c, students s
+WHERE c.join_code = 'DB101' AND s.username = 'student3'
+  AND NOT EXISTS (SELECT 1 FROM classroom_members cm WHERE cm.classroom_id = c.id AND cm.student_id = s.id);
+INSERT INTO classroom_members (classroom_id, student_id, status, approved_by, approved_at)
+SELECT c.id, s.id, 'approved', 1, NOW() FROM classrooms c, students s
+WHERE c.join_code = 'NET201' AND s.username = 'student2'
+  AND NOT EXISTS (SELECT 1 FROM classroom_members cm WHERE cm.classroom_id = c.id AND cm.student_id = s.id);
 
 -- ===== VERIFY SCHEMA CREATION =====
 SELECT 'Teachers table created' AS status;

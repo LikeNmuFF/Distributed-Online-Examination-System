@@ -1,5 +1,8 @@
 FROM node:18-alpine AS build
 
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 WORKDIR /app
 
 # Copy pre-installed node_modules from host (bypasses Docker container network issues)
