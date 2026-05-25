@@ -9,3 +9,12 @@ dist/
 *.swp
 *.swo
 package-lock.json
+.session
+.cache/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+*.eslintcache
+*.prettiercache
+.gitignore
