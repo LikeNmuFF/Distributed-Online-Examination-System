@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { examsAPI, examManagementAPI } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { examsAPI, examManagementAPI, teachersAPI } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 const QUESTION_TYPES = [
   { value: 'multiple_choice', label: 'Multiple Choice' },
@@ -12,10 +13,10 @@ const QUESTION_TYPES = [
 ];
 
 const CATEGORIES = [
-  { value: 'quiz', label: 'Quiz' },
-  { value: 'long_quiz', label: 'Long Quiz' },
-  { value: 'midterm', label: 'Midterm' },
-  { value: 'final', label: 'Final Exam' },
+  { value: 'quiz', label: 'Quiz', description: 'Short assessment for quick checks or recitation.' },
+  { value: 'long_quiz', label: 'Long Quiz', description: 'Longer quiz with broader coverage and more items.' },
+  { value: 'midterm', label: 'Midterm Exam', description: 'Major exam usually used in the middle of the term.' },
+  { value: 'final', label: 'Final Exam', description: 'Comprehensive end-of-term examination.' },
 ];
 
 const emptyQuestion = (type = 'multiple_choice') => {
@@ -40,6 +41,7 @@ const emptyQuestion = (type = 'multiple_choice') => {
 
 export default function CreateExam({ user, onLogout }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('quiz');
@@ -47,6 +49,22 @@ export default function CreateExam({ user, onLogout }) {
   const [questions, setQuestions] = useState([emptyQuestion('multiple_choice')]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const classroomId = searchParams.get('classroomId');
+  const classroomName = searchParams.get('classroomName') || '';
+  const isTeacher = user?.userType === 'teacher';
+  const backPath = classroomId ? `/classroom/${classroomId}` : isTeacher ? '/teacher-dashboard' : '/exams';
+  const [classrooms, setClassrooms] = useState([]);
+  const [selectedClassroomId, setSelectedClassroomId] = useState('');
+
+  useEffect(() => {
+    if (isTeacher && !classroomId) {
+      teachersAPI.getClassrooms()
+        .then(res => setClassrooms(res.data.classrooms))
+        .catch(() => {});
+    }
+  }, []);
+
+  const selectedCategory = CATEGORIES.find((item) => item.value === category) || CATEGORIES[0];
 
   const addQuestion = () => {
     setQuestions([...questions, emptyQuestion('multiple_choice')]);
@@ -143,7 +161,6 @@ export default function CreateExam({ user, onLogout }) {
 
     try {
       setSubmitting(true);
-      const isTeacher = user?.userType === 'teacher';
       const createAPI = isTeacher ? examManagementAPI.create : examsAPI.create;
 
       const payload = {
@@ -151,6 +168,7 @@ export default function CreateExam({ user, onLogout }) {
         description: description.trim(),
         category,
         duration_seconds: duration * 60,
+        ...(isTeacher && (classroomId || selectedClassroomId) ? { classroom_id: Number(classroomId || selectedClassroomId) } : {}),
         questions: questions.map(q => {
           const base = {
             question_text: q.question_text,
@@ -175,7 +193,7 @@ export default function CreateExam({ user, onLogout }) {
       };
 
       await createAPI(payload);
-      navigate(isTeacher ? '/teacher-dashboard' : '/exams');
+      navigate(backPath);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create exam');
     } finally {
@@ -307,25 +325,40 @@ export default function CreateExam({ user, onLogout }) {
       <header className="border-b border-border-subtle sticky top-0 z-20 backdrop-filter backdrop-blur-xl bg-bg-secondary/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/exams')} className="btn-ghost !p-2">
+            <button onClick={() => navigate(backPath)} className="btn-ghost !p-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
               </svg>
             </button>
-            <span className="font-display font-bold text-base text-text-primary">Create Exam</span>
+            <span className="font-display font-bold text-base text-text-primary">
+              {isTeacher ? 'Teacher Exam Builder' : 'Create Exam'}
+            </span>
           </div>
-          <button onClick={onLogout} className="btn-ghost">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button onClick={onLogout} className="btn-ghost">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 relative z-10">
         <div className="animate-fadeInUp mb-8">
-          <h2 className="text-3xl font-display font-bold text-text-primary mb-2">New Examination</h2>
-          <p className="text-text-secondary text-sm">Create a new exam with mixed question types</p>
+          <h2 className="text-3xl font-display font-bold text-text-primary mb-2">
+            {selectedCategory.label}
+          </h2>
+          <p className="text-text-secondary text-sm">
+            Teachers can choose the exam type, set the time limit, and write questions manually.
+          </p>
+          {classroomId && (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-text-primary">
+              <span className="font-display font-semibold text-accent">Classroom</span>
+              <span>{classroomName || `Room #${classroomId}`}</span>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -342,6 +375,33 @@ export default function CreateExam({ user, onLogout }) {
             <h3 className="font-display font-bold text-sm text-text-primary uppercase tracking-widest mb-6">Exam Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="sm:col-span-2">
+                <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Exam Type</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {CATEGORIES.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setCategory(item.value)}
+                      className={`text-left rounded-xl border p-4 transition-all ${
+                        category === item.value
+                          ? 'border-accent bg-accent/10 shadow-[0_0_0_1px_rgba(217,119,6,0.25)]'
+                          : 'border-border-subtle bg-bg-tertiary/20 hover:border-accent/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-display font-bold text-text-primary">{item.label}</span>
+                        {category === item.value && (
+                          <span className="text-[10px] font-display font-bold uppercase tracking-[0.15em] text-accent">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm text-text-secondary">{item.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Title</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder="e.g. Introduction to Machine Learning" />
               </div>
@@ -349,17 +409,31 @@ export default function CreateExam({ user, onLogout }) {
                 <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Description</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input min-h-[80px] resize-y" placeholder="Describe what this exam covers..." />
               </div>
-              <div>
-                <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Type</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="input">
-                  {CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-              </div>
+              {isTeacher && !classroomId && classrooms.length > 0 && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Assign to Classroom (optional)</label>
+                  <select
+                    value={selectedClassroomId}
+                    onChange={(e) => setSelectedClassroomId(e.target.value)}
+                    className="input w-full"
+                  >
+                    <option value="">— Select a classroom —</option>
+                    {classrooms.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-display font-semibold text-text-secondary mb-2 tracking-wider uppercase">Duration (minutes)</label>
                 <input type="number" value={duration} onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))} className="input" min="1" />
+              </div>
+              <div className="rounded-xl border border-border-subtle bg-bg-tertiary/20 p-4">
+                <div className="text-xs font-display font-semibold uppercase tracking-wider text-text-secondary">Selected Setup</div>
+                <div className="mt-2 text-lg font-display font-bold text-text-primary">{selectedCategory.label}</div>
+                <div className="mt-1 text-sm text-text-secondary">{duration} minute{duration === 1 ? '' : 's'}</div>
               </div>
             </div>
           </div>
@@ -406,7 +480,7 @@ export default function CreateExam({ user, onLogout }) {
           </div>
 
           <div className="flex gap-4 mt-8 animate-fadeInUp">
-            <button type="button" onClick={() => navigate('/exams')} className="btn-secondary flex-1 sm:flex-none text-xs">
+            <button type="button" onClick={() => navigate(backPath)} className="btn-secondary flex-1 sm:flex-none text-xs">
               Cancel
             </button>
             <button type="submit" disabled={submitting} className="btn-primary flex-1 sm:flex-none text-xs">
@@ -420,7 +494,7 @@ export default function CreateExam({ user, onLogout }) {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  Create Exam
+                  {classroomId || selectedClassroomId ? 'Create and Add to Classroom' : 'Create Exam'}
                 </span>
               )}
             </button>

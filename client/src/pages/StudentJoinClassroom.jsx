@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { classroomJoinAPI } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function StudentJoinClassroom() {
   const [joinCode, setJoinCode] = useState('');
@@ -84,6 +85,9 @@ export default function StudentJoinClassroom() {
             </button>
             <h1 className="text-2xl font-display font-bold text-text-primary">Join Classroom</h1>
             <p className="text-sm text-text-secondary mt-1">Use a join code to join a teacher's classroom</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
           </div>
         </div>
       </div>

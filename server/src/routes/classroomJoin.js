@@ -157,4 +157,75 @@ router.delete('/:classroomId', verifyToken, requireStudent, async (req, res) => 
   }
 });
 
+/**
+ * GET /api/classroom-join/:classroomId/members
+ * Student views approved classmates in their classroom
+ */
+router.get('/:classroomId/members', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { classroomId } = req.params;
+
+    // Verify student is an approved member
+    const membership = await postgres.query(
+      'SELECT id FROM classroom_members WHERE classroom_id = $1 AND student_id = $2 AND status = $3',
+      [classroomId, req.user.id, 'approved']
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ error: 'You are not a member of this classroom' });
+    }
+
+    const result = await postgres.query(
+      `SELECT s.id, s.username, cm.joined_at
+       FROM classroom_members cm
+       JOIN students s ON cm.student_id = s.id
+       WHERE cm.classroom_id = $1 AND cm.status = 'approved'
+       ORDER BY cm.joined_at ASC`,
+      [classroomId]
+    );
+
+    res.json({ members: result.rows });
+  } catch (error) {
+    console.error('Fetch classroom members error:', error);
+    res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
+/**
+ * GET /api/classroom-join/:classroomId/exams
+ * Student views exams available in their classroom
+ */
+router.get('/:classroomId/exams', verifyToken, requireStudent, async (req, res) => {
+  try {
+    const { classroomId } = req.params;
+
+    // Verify student is an approved member
+    const membership = await postgres.query(
+      'SELECT id FROM classroom_members WHERE classroom_id = $1 AND student_id = $2 AND status = $3',
+      [classroomId, req.user.id, 'approved']
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ error: 'You are not a member of this classroom' });
+    }
+
+    const result = await postgres.query(
+      `SELECT e.id, e.title, e.description, e.category, e.duration_seconds,
+              COUNT(q.id)::int AS question_count
+       FROM classroom_exams ce
+       JOIN exams e ON ce.exam_id = e.id
+       LEFT JOIN questions q ON q.exam_id = e.id
+       WHERE ce.classroom_id = $1
+       GROUP BY e.id
+       ORDER BY e.created_at DESC`,
+      [classroomId]
+    );
+
+    res.json({ exams: result.rows });
+  } catch (error) {
+    console.error('Fetch classroom exams error:', error);
+    res.status(500).json({ error: 'Failed to fetch exams' });
+  }
+});
+
 export default router;

@@ -198,10 +198,13 @@ router.get('/classrooms/:classroomId', verifyToken, requireTeacher, async (req, 
 
     // Get exams in classroom
     const examsResult = await postgres.query(
-      `SELECT e.id, e.title, e.description, e.category, e.duration_seconds, ce.created_at
+      `SELECT e.id, e.title, e.description, e.category, e.duration_seconds, ce.created_at,
+              COUNT(q.id)::int AS question_count
        FROM classroom_exams ce
        JOIN exams e ON ce.exam_id = e.id
+       LEFT JOIN questions q ON q.exam_id = e.id
        WHERE ce.classroom_id = $1
+       GROUP BY e.id, ce.created_at
        ORDER BY ce.created_at DESC`,
       [classroomId]
     );

@@ -10,56 +10,91 @@ const router = express.Router();
  * Teacher creates a new exam and sets ownership
  */
 router.post('/teacher/create', verifyToken, requireTeacher, async (req, res) => {
+  let client;
+
   try {
-    const { title, description, category, duration_seconds, questions } = req.body;
+    const { title, description, category, duration_seconds, questions, classroom_id } = req.body;
 
     if (!title || !questions || !Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({ error: 'Title and at least one question required' });
     }
 
-    // Create exam
-    const examResult = await postgres.query(
+    client = await postgres.connect();
+    await client.query('BEGIN');
+
+    if (classroom_id) {
+      const classroomCheck = await client.query(
+        'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+        [classroom_id, req.user.id]
+      );
+
+      if (classroomCheck.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'You do not own this classroom' });
+      }
+    }
+
+    const examResult = await client.query(
       'INSERT INTO exams (title, description, category, duration_seconds) VALUES ($1, $2, $3, $4) RETURNING id',
       [title, description || '', category || 'quiz', duration_seconds || 1800]
     );
 
     const examId = examResult.rows[0].id;
 
-    // Insert questions
     for (const q of questions) {
       const questionType = q.question_type || 'multiple_choice';
+
       if (questionType === 'multiple_choice') {
-        await postgres.query(
+        await client.query(
           `INSERT INTO questions (exam_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_option)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [examId, q.question_text, questionType, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A']
         );
       } else {
-        await postgres.query(
+        const correctAnswer = questionType === 'true_false'
+          ? q.correct_option || 'true'
+          : (q.correct_answer || []);
+
+        await client.query(
           `INSERT INTO questions (exam_id, question_text, question_type, option_a, option_b, option_c, option_d, correct_option, options_json, correct_answer)
            VALUES ($1, $2, $3, '', '', '', '', '', $4, $5)`,
-          [examId, q.question_text, questionType, JSON.stringify(q.options_json || {}), JSON.stringify(q.correct_answer)]
+          [examId, q.question_text, questionType, JSON.stringify(q.options_json || {}), JSON.stringify(correctAnswer)]
         );
       }
     }
 
-    // Set teacher ownership
-    await postgres.query(
+    await client.query(
       'INSERT INTO exam_ownership (exam_id, teacher_id) VALUES ($1, $2)',
       [examId, req.user.id]
     );
 
+    if (classroom_id) {
+      await client.query(
+        'INSERT INTO classroom_exams (classroom_id, exam_id) VALUES ($1, $2)',
+        [classroom_id, examId]
+      );
+    }
+
+    await client.query('COMMIT');
+
     res.status(201).json({
       success: true,
       examId,
+      classroomId: classroom_id || null,
       message: 'Exam created successfully',
     });
   } catch (error) {
+    if (client) {
+      await client.query('ROLLBACK');
+    }
+
     if (error.code === '23505') {
       return res.status(409).json({ error: 'An exam with this title already exists' });
     }
     console.error('Create exam error:', error);
     res.status(500).json({ error: 'Failed to create exam' });
+  } finally {
+    client?.release();
   }
 });
 
@@ -219,13 +254,15 @@ router.get('/teacher/list', verifyToken, requireTeacher, async (req, res) => {
   try {
     const result = await postgres.query(
        `SELECT e.id, e.title, e.description, e.category, e.duration_seconds, e.created_at,
-              COUNT(q.id)::int AS question_count,
-              COUNT(ce.id)::int AS classroom_count
-       FROM exams e
-       LEFT JOIN questions q ON q.exam_id = e.id
-       LEFT JOIN classroom_exams ce ON e.id = ce.exam_id
-       GROUP BY e.id
-       ORDER BY e.created_at DESC`
+               COUNT(q.id)::int AS question_count,
+               COUNT(ce.id)::int AS classroom_count
+        FROM exams e
+        JOIN exam_ownership eo ON eo.exam_id = e.id AND eo.teacher_id = $1
+        LEFT JOIN questions q ON q.exam_id = e.id
+        LEFT JOIN classroom_exams ce ON e.id = ce.exam_id
+        GROUP BY e.id
+        ORDER BY e.created_at DESC`,
+       [req.user.id]
     );
 
     res.json({

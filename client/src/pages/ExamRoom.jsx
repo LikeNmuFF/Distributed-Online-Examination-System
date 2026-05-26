@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { examsAPI, submissionsAPI } from '../services/api';
 import { initSocket, joinExam, onTimerTick, closeSocket } from '../services/socket';
 import Timer from '../components/Timer';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function ExamRoom({ user, onLogout }) {
   const { examId } = useParams();
@@ -187,6 +188,7 @@ export default function ExamRoom({ user, onLogout }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-bg-tertiary/50 rounded-lg border border-border-subtle">
               <div className={`w-2 h-2 rounded-full ${
                 nodeStatus === 'active' ? 'bg-success animate-pulse' :

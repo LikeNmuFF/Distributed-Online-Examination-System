@@ -77,6 +77,10 @@ export const classroomJoinAPI = {
     api.post('/classroom-join/request', { joinCode }),
   getMyRequests: () => api.get('/classroom-join/my-requests'),
   getMyClassrooms: () => api.get('/classroom-join/my-classrooms'),
+  getClassroomMembers: (classroomId) =>
+    api.get(`/classroom-join/${classroomId}/members`),
+  getClassroomExams: (classroomId) =>
+    api.get(`/classroom-join/${classroomId}/exams`),
   leaveClassroom: (classroomId) =>
     api.delete(`/classroom-join/${classroomId}`),
 };
@@ -129,6 +133,38 @@ export const scoreboardAPI = {
   },
   getClassrooms: () => api.get('/scoreboard/classrooms'),
   getExams: () => api.get('/scoreboard/exams'),
+};
+
+export const essayGradingAPI = {
+  getPending: () => api.get('/essay-grading/pending'),
+  gradeEssay: (submissionId, questionIndex, score) =>
+    api.post(`/essay-grading/${submissionId}/grade`, { questionIndex, score }),
+};
+
+export const classroomChatAPI = {
+  sendMessage: (classroomId, messageText, mentionedUserIds = []) =>
+    api.post('/classroom-chat/messages', { classroomId, messageText, mentionedUserIds }),
+  getMessages: (classroomId, limit = 50, offset = 0) =>
+    api.get(`/classroom-chat/messages/${classroomId}`, { params: { limit, offset } }),
+  getMembers: (classroomId) =>
+    api.get(`/classroom-chat/members/${classroomId}`),
+  deleteMessage: (messageId) =>
+    api.delete(`/classroom-chat/messages/${messageId}`),
+};
+
+export const studentStatusAPI = {
+  joinClassroom: (classroomId, sessionId) =>
+    api.post('/student-status/join-classroom', { classroomId, sessionId }),
+  leaveClassroom: (sessionId) =>
+    api.post('/student-status/leave-classroom', { sessionId }),
+  startExam: (classroomId, sessionId, examId) =>
+    api.post('/student-status/start-exam', { classroomId, sessionId, examId }),
+  endExam: (sessionId) =>
+    api.post('/student-status/end-exam', { sessionId }),
+  getOnlineStudents: (classroomId) =>
+    api.get(`/student-status/classroom/${classroomId}`),
+  heartbeat: (sessionId) =>
+    api.post('/student-status/heartbeat', { sessionId }),
 };
 
 export default api;

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { teachersAPI, classroomsAPI, examManagementAPI } from '../services/api';
+import StudentStatusPanel from '../components/StudentStatusPanel';
+import ClassroomChat from '../components/ClassroomChat';
+import ThemeToggle from '../components/ThemeToggle';
 
-export default function ClassroomManagement() {
+export default function ClassroomManagement({ user }) {
   const { classroomId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -12,6 +15,7 @@ export default function ClassroomManagement() {
   const [exams, setExams] = useState([]);
   const [teacherExams, setTeacherExams] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [showAddExamForm, setShowAddExamForm] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState('');
 
@@ -84,7 +88,7 @@ export default function ClassroomManagement() {
   const categoryLabels = {
     quiz: 'Quiz',
     long_quiz: 'Long Quiz',
-    midterm: 'Midterm',
+    midterm: 'Midterm Exam',
     final: 'Final Exam',
   };
 
@@ -155,35 +159,66 @@ export default function ClassroomManagement() {
               </code>
               <span className="text-xs text-text-secondary">Join Code</span>
             </div>
+            </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
+        {/* Tabs */}
       <div className="relative z-10 border-b border-border-subtle bg-bg-primary/50 backdrop-blur sticky top-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`py-4 text-sm font-display font-semibold transition-colors border-b-2 ${
-              activeTab === 'members'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Members
-          </button>
-          <button
-            onClick={() => setActiveTab('exams')}
-            className={`py-4 text-sm font-display font-semibold transition-colors border-b-2 ${
-              activeTab === 'exams'
-                ? 'border-accent text-accent'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Exams
-          </button>
-        </div>
-      </div>
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
+           <button
+             onClick={() => setActiveTab('members')}
+             className={`py-4 text-sm font-display font-semibold transition-colors border-b-2 ${
+               activeTab === 'members'
+                 ? 'border-accent text-accent'
+                 : 'border-transparent text-text-secondary hover:text-text-primary'
+             }`}
+           >
+             Members
+           </button>
+           <button
+             onClick={() => setActiveTab('exams')}
+             className={`py-4 text-sm font-display font-semibold transition-colors border-b-2 ${
+               activeTab === 'exams'
+                 ? 'border-accent text-accent'
+                 : 'border-transparent text-text-secondary hover:text-text-primary'
+             }`}
+           >
+             Exams
+           </button>
+           <button
+             onClick={() => setActiveTab('status')}
+             className={`py-4 text-sm font-display font-semibold transition-colors border-b-2 ${
+               activeTab === 'status'
+                 ? 'border-accent text-accent'
+                 : 'border-transparent text-text-secondary hover:text-text-primary'
+             }`}
+           >
+             👥 Student Status
+           </button>
+           <button
+             onClick={() => {
+               setActiveTab('chat');
+               setChatUnreadCount(0);
+             }}
+             className={`relative py-4 text-sm font-display font-semibold transition-colors border-b-2 ${
+               activeTab === 'chat'
+                 ? 'border-accent text-accent'
+                 : 'border-transparent text-text-secondary hover:text-text-primary'
+             }`}
+           >
+             💬 Chat
+             {chatUnreadCount > 0 && (
+               <span className="absolute -right-2 top-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold h-5 w-5">
+                 {chatUnreadCount}
+               </span>
+             )}
+           </button>
+         </div>
+       </div>
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -272,16 +307,30 @@ export default function ClassroomManagement() {
         {/* Exams Tab */}
         {activeTab === 'exams' && (
           <div className="space-y-6">
-            <button
-              onClick={() => setShowAddExamForm(!showAddExamForm)}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Add Exam to Classroom
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => navigate(`/exams/create?classroomId=${classroomId}&classroomName=${encodeURIComponent(classroom?.name || '')}`)}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Create Exam for Classroom
+              </button>
+              <button
+                onClick={() => setShowAddExamForm(!showAddExamForm)}
+                className="btn-secondary inline-flex items-center gap-2"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Existing Exam
+              </button>
+            </div>
 
             {showAddExamForm && (
               <div className="p-6 rounded-xl border border-border-subtle bg-glass-bg backdrop-filter backdrop-blur-xl max-w-md">
@@ -378,6 +427,28 @@ export default function ClassroomManagement() {
             )}
           </div>
         )}
+
+        {/* Student Status Tab */}
+        {activeTab === 'status' && (
+          <div className="max-w-2xl">
+            <StudentStatusPanel classroomId={classroomId} />
+          </div>
+        )}
+
+        {/* Classroom Chat Tab */}
+        <div className="h-[600px] animate-scaleIn" style={{ display: activeTab === 'chat' ? 'block' : 'none' }}>
+          <ClassroomChat
+            classroomId={classroomId}
+            userId={user?.id}
+            username={user?.username}
+            userType={user?.userType}
+            onNewMessage={() => {
+              if (activeTab !== 'chat') {
+                setChatUnreadCount((count) => count + 1);
+              }
+            }}
+          />
+        </div>
       </div>
     </div>
   );

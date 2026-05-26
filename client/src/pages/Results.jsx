@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { submissionsAPI } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Results({ user, onLogout }) {
   const { jobId } = useParams();
@@ -144,6 +145,7 @@ export default function Results({ user, onLogout }) {
             <span className="font-display font-bold text-base text-text-primary">Aegis</span>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <span className="hidden sm:inline text-xs text-text-secondary font-medium">{user?.username}</span>
             <button onClick={onLogout} className="btn-ghost">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

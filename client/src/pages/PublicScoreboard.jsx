@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { scoreboardAPI } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function PublicScoreboard() {
   const [scores, setScores] = useState([]);
@@ -99,6 +100,7 @@ export default function PublicScoreboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <button
               onClick={() => navigate('/')}
               className="btn-ghost text-xs font-display font-semibold tracking-wider uppercase"

@@ -203,3 +203,40 @@ FROM exams e WHERE e.title = 'Database Management Systems' AND NOT EXISTS (SELEC
 INSERT INTO questions (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option)
 SELECT e.id, 'What is the purpose of a view in SQL?', 'To store data permanently', 'To provide a virtual table based on a query result', 'To index a table', 'To enforce referential integrity', 'B'
 FROM exams e WHERE e.title = 'Database Management Systems' AND NOT EXISTS (SELECT 1 FROM questions q WHERE q.exam_id = e.id AND q.question_text LIKE 'What is the purpose of a view in SQL%');
+
+-- ===== MIGRATION v3: REAL-TIME CHAT AND STUDENT ONLINE STATUS =====
+-- Add support for classroom chat messaging and real-time student status tracking
+
+-- 1. CLASSROOM_MESSAGES TABLE
+-- Stores all messages sent in a classroom with support for mentioning users
+CREATE TABLE IF NOT EXISTS classroom_messages (
+  id SERIAL PRIMARY KEY,
+  classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  message_text TEXT NOT NULL,
+  mentioned_users JSONB DEFAULT '[]',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. CLASSROOM_STUDENT_SESSIONS TABLE
+-- Tracks which students are currently online in a classroom
+CREATE TABLE IF NOT EXISTS classroom_student_sessions (
+  id SERIAL PRIMARY KEY,
+  classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  session_id VARCHAR(255) NOT NULL UNIQUE,
+  exam_id INTEGER REFERENCES exams(id) ON DELETE SET NULL,
+  status VARCHAR(20) DEFAULT 'online' CHECK (status IN ('online', 'taking_exam', 'offline')),
+  joined_at TIMESTAMP DEFAULT NOW(),
+  last_activity TIMESTAMP DEFAULT NOW(),
+  UNIQUE(classroom_id, student_id, session_id)
+);
+
+-- ===== INDICES FOR PERFORMANCE =====
+CREATE INDEX IF NOT EXISTS idx_classroom_messages_classroom_id ON classroom_messages(classroom_id);
+CREATE INDEX IF NOT EXISTS idx_classroom_messages_sender_id ON classroom_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_classroom_messages_created_at ON classroom_messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_classroom_student_sessions_classroom_id ON classroom_student_sessions(classroom_id);
+CREATE INDEX IF NOT EXISTS idx_classroom_student_sessions_student_id ON classroom_student_sessions(student_id);
+CREATE INDEX IF NOT EXISTS idx_classroom_student_sessions_status ON classroom_student_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_classroom_student_sessions_joined_at ON classroom_student_sessions(joined_at);

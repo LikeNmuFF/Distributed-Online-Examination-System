@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Login from './pages/Login';
 import ExamList from './pages/ExamList';
 import ExamRoom from './pages/ExamRoom';
@@ -8,6 +9,8 @@ import CreateExam from './pages/CreateExam';
 import TeacherDashboard from './pages/TeacherDashboard';
 import ClassroomManagement from './pages/ClassroomManagement';
 import StudentJoinClassroom from './pages/StudentJoinClassroom';
+import StudentClassroomView from './pages/StudentClassroomView';
+import TeacherEssayGrading from './pages/TeacherEssayGrading';
 import PublicScoreboard from './pages/PublicScoreboard';
 import './index.css';
 
@@ -54,6 +57,7 @@ export default function App() {
   }
 
   return (
+    <ThemeProvider>
     <Router>
       <Routes>
         <Route
@@ -90,7 +94,17 @@ export default function App() {
           path="/classroom/:classroomId"
           element={
             isAuthenticated && user?.userType === 'teacher' ? (
-              <ClassroomManagement />
+              <ClassroomManagement user={user} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/essay-grading"
+          element={
+            isAuthenticated && user?.userType === 'teacher' ? (
+              <TeacherEssayGrading user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/" replace />
             )
@@ -103,6 +117,16 @@ export default function App() {
           element={
             isAuthenticated ? (
               <ExamList user={user} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/classroom-room/:classroomId"
+          element={
+            isAuthenticated && user?.userType === 'student' ? (
+              <StudentClassroomView user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/" replace />
             )
@@ -150,5 +174,6 @@ export default function App() {
         />
       </Routes>
     </Router>
+    </ThemeProvider>
   );
 }

@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI, teachersAPI, studentsAPI } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login({ onLogin }) {
   const [role, setRole] = useState(null); // null, 'student', or 'teacher'
@@ -141,6 +142,9 @@ export default function Login({ onLogin }) {
 
         <div className="w-full lg:w-[45%] xl:w-[40%] flex items-center justify-center p-6 sm:p-8 lg:p-12 relative z-20">
           <div className="w-full max-w-sm">
+            <div className="flex justify-end mb-4">
+              <ThemeToggle />
+            </div>
             <div className="lg:hidden flex items-center gap-3 mb-14">
               <div className="relative">
                 <div className="absolute inset-0 bg-accent rounded-lg blur-lg opacity-40" />
@@ -263,6 +267,9 @@ export default function Login({ onLogin }) {
 
       <div className="w-full lg:w-[45%] xl:w-[40%] flex items-center justify-center p-6 sm:p-8 lg:p-12 relative z-20">
         <div className="w-full max-w-sm">
+          <div className="flex justify-end mb-4">
+            <ThemeToggle />
+          </div>
           <div className="lg:hidden flex items-center gap-3 mb-14">
             <div className="relative">
               <div className="absolute inset-0 bg-accent rounded-lg blur-lg opacity-40" />
